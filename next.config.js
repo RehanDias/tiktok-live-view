@@ -9,6 +9,7 @@ const nextConfig = {
     assetPrefix: "/tiktok-live-view/",
     env: {
         NEXT_PUBLIC_API_URL: "https://tiktok-live-stream.vercel.app",
+        NEXT_PUBLIC_URL: "https://rehandias.github.io/tiktok-live-view",
     },
 };
 
