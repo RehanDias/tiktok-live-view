@@ -19,7 +19,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import {
+    Tooltip,
+    TooltipProvider,
+    TooltipTrigger,
+    TooltipContent,
+} from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -513,11 +518,14 @@ export default function Home() {
     };
 
     const getStreamUrl = () => {
-        if (!streamData?.live.streamQualities) return null;
+        if (!streamData || !streamData.live.streamQualities) return null;
+
         const qualities = streamData.live.streamQualities;
-        if (!qualities[selectedQuality]?.urls) return null;
-        const urls = qualities[selectedQuality].urls;
-        return urls.hls || urls.flv || null;
+        const quality = qualities[selectedQuality];
+
+        if (!quality?.urls) return null;
+
+        return quality.urls.hls || quality.urls.flv || null;
     };
 
     const getQualityLabel = (quality: string, resolution: string) => {
@@ -695,7 +703,9 @@ export default function Home() {
                                                     </Button>
                                                 </TooltipTrigger>
                                                 <TooltipContent>
-                                                    {isMuted ? "Unmute" : "Mute"}
+                                                    {isMuted
+                                                        ? "Unmute"
+                                                        : "Mute"}
                                                 </TooltipContent>
                                             </Tooltip>
                                             <div className="w-24">
@@ -796,7 +806,9 @@ export default function Home() {
                                                     />
                                                 </Button>
                                             </TooltipTrigger>
-                                            <TooltipContent>Like</TooltipContent>
+                                            <TooltipContent>
+                                                Like
+                                            </TooltipContent>
                                         </Tooltip>
                                         <Tooltip>
                                             <TooltipTrigger asChild>
@@ -809,7 +821,9 @@ export default function Home() {
                                                     <Share2 className="h-5 w-5" />
                                                 </Button>
                                             </TooltipTrigger>
-                                            <TooltipContent>Share</TooltipContent>
+                                            <TooltipContent>
+                                                Share
+                                            </TooltipContent>
                                         </Tooltip>
                                     </div>
                                 </div>
