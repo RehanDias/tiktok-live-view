@@ -29,6 +29,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { fetchTiktokLiveData } from "@/lib/api";
 
 interface TikTokResponse {
     user: {
@@ -361,10 +362,7 @@ export default function Home() {
         setShowRecentSearches(false);
 
         try {
-            const response = await fetch(
-                `https://tiktok-live-stream.vercel.app/api/tiktok-live/${searchUsername}`
-            );
-            const data: TikTokResponse = await response.json();
+            const data = await fetchTiktokLiveData(searchUsername);
             setStreamData(data);
             addToRecentSearches(searchUsername);
 
@@ -375,11 +373,9 @@ export default function Home() {
             if (data.live.isLive) {
                 refreshIntervalRef.current = setInterval(async () => {
                     try {
-                        const refreshResponse = await fetch(
-                            `https://tiktok-live-stream.vercel.app/api/tiktok-live/${searchUsername}`
+                        const refreshData = await fetchTiktokLiveData(
+                            searchUsername
                         );
-                        const refreshData: TikTokResponse =
-                            await refreshResponse.json();
                         setStreamData((prev) =>
                             prev
                                 ? {
@@ -398,6 +394,7 @@ export default function Home() {
                 }, 5 * 60 * 1000);
             }
         } catch (err) {
+            console.error("Fetch error:", err);
             setError("Failed to fetch stream data");
         } finally {
             setLoading(false);
