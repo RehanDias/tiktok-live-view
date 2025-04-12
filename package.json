@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && echo.> out\\.nojekyll",
+    "build": "next build",
+    "postbuild": "node -e \"require('fs').writeFileSync('./out/.nojekyll', '')\"",
     "start": "next start",
     "lint": "next lint",
     "predeploy": "npm run build",
