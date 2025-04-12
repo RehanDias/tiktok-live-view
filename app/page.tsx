@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
 import {
     Users,
     Volume2,
@@ -147,24 +148,20 @@ export default function Home() {
             }
         };
 
-        if (videoContainerRef.current) {
-            videoContainerRef.current.addEventListener(
-                "mousemove",
-                handleMouseMove
-            );
-            videoContainerRef.current.addEventListener(
-                "mouseleave",
-                handleMouseLeave
-            );
+        const currentContainer = videoContainerRef.current;
+
+        if (currentContainer) {
+            currentContainer.addEventListener("mousemove", handleMouseMove);
+            currentContainer.addEventListener("mouseleave", handleMouseLeave);
         }
 
         return () => {
-            if (videoContainerRef.current) {
-                videoContainerRef.current.removeEventListener(
+            if (currentContainer) {
+                currentContainer.removeEventListener(
                     "mousemove",
                     handleMouseMove
                 );
-                videoContainerRef.current.removeEventListener(
+                currentContainer.removeEventListener(
                     "mouseleave",
                     handleMouseLeave
                 );
@@ -320,7 +317,7 @@ export default function Home() {
         return "origin";
     };
 
-    const checkAndUpdateQuality = async () => {
+    const checkAndUpdateQuality = useCallback(async () => {
         if (!autoQuality || !streamData?.live.streamQualities) return;
 
         setLoadingQuality(true);
@@ -340,7 +337,7 @@ export default function Home() {
             checkAndUpdateQuality,
             30000
         );
-    };
+    }, [autoQuality, streamData?.live.streamQualities, selectedQuality]);
 
     useEffect(() => {
         if (streamData?.live.isLive) {
@@ -352,7 +349,7 @@ export default function Home() {
                 clearTimeout(qualityCheckTimeoutRef.current);
             }
         };
-    }, [streamData?.live.isLive, autoQuality]);
+    }, [streamData?.live.isLive, checkAndUpdateQuality]);
 
     const fetchStreamData = async (searchUsername: string = username) => {
         if (!searchUsername) return;
@@ -400,6 +397,25 @@ export default function Home() {
             setLoading(false);
         }
     };
+
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter") {
+            fetchStreamData();
+        } else if (e.key === "Escape") {
+            setShowRecentSearches(false);
+        }
+    };
+
+    const getStreamUrl = useCallback(() => {
+        if (!streamData || !streamData.live.streamQualities) return null;
+
+        const qualities = streamData.live.streamQualities;
+        const quality = qualities[selectedQuality];
+
+        if (!quality?.urls) return null;
+
+        return quality.urls.hls || quality.urls.flv || null;
+    }, [streamData, selectedQuality]);
 
     useEffect(() => {
         if (!streamData?.live.isLive || !videoRef.current) return;
@@ -504,26 +520,13 @@ export default function Home() {
         return () => {
             cleanupPlayers();
         };
-    }, [streamData, selectedQuality, autoQuality]);
-
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter") {
-            fetchStreamData();
-        } else if (e.key === "Escape") {
-            setShowRecentSearches(false);
-        }
-    };
-
-    const getStreamUrl = () => {
-        if (!streamData || !streamData.live.streamQualities) return null;
-
-        const qualities = streamData.live.streamQualities;
-        const quality = qualities[selectedQuality];
-
-        if (!quality?.urls) return null;
-
-        return quality.urls.hls || quality.urls.flv || null;
-    };
+    }, [
+        streamData?.live.isLive,
+        streamData?.live.streamQualities,
+        selectedQuality,
+        autoQuality,
+        getStreamUrl,
+    ]);
 
     const getQualityLabel = (quality: string, resolution: string) => {
         switch (quality) {
@@ -746,11 +749,15 @@ export default function Home() {
 
                             <div className="p-8 space-y-6">
                                 <div className="flex items-center gap-6">
-                                    <img
-                                        src={streamData.user.avatar.large}
-                                        alt={streamData.user.nickname}
-                                        className="w-20 h-20 rounded-full ring-4 ring-offset-4 ring-violet-500/50 dark:ring-violet-400/50 shadow-lg hover:scale-110 transition-transform duration-300"
-                                    />
+                                    <div className="relative w-20 h-20">
+                                        <Image
+                                            src={streamData.user.avatar.large}
+                                            alt={streamData.user.nickname}
+                                            fill
+                                            className="rounded-full ring-4 ring-offset-4 ring-violet-500/50 dark:ring-violet-400/50 shadow-lg hover:scale-110 transition-transform duration-300 object-cover"
+                                            priority
+                                        />
+                                    </div>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-2">
                                             <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-violet-500 dark:from-violet-400 dark:to-pink-400">
