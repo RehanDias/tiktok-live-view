@@ -5,7 +5,8 @@ const nextConfig = {
     eslint: {
         ignoreDuringBuilds: true,
     },
-    basePath: process.env.NODE_ENV === "production" ? "/tiktok-live-view" : "",
+    basePath: "/tiktok-live-view",
+    assetPrefix: "/tiktok-live-view/",
     env: {
         NEXT_PUBLIC_API_URL: "https://tiktok-live-stream.vercel.app",
     },
