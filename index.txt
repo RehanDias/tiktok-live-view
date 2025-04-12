@@ -1,5 +1,5 @@
 1:HL["/tiktok-live-view/_next/static/css/db12158fc0362b8e.css","style"]
-0:["KMurxipoIwnV3-rdCiXTC",[[["",{"children":["__PAGE__",{}]},"$undefined","$undefined",true],"$L2",[[["$","link","0",{"rel":"stylesheet","href":"/tiktok-live-view/_next/static/css/db12158fc0362b8e.css","precedence":"next"}]],"$L3"]]]]
+0:["y7dCOZysRCo5y6dxmxNRG",[[["",{"children":["__PAGE__",{}]},"$undefined","$undefined",true],"$L2",[[["$","link","0",{"rel":"stylesheet","href":"/tiktok-live-view/_next/static/css/db12158fc0362b8e.css","precedence":"next"}]],"$L3"]]]]
 4:I{"id":4244,"chunks":["185:static/chunks/app/layout-f280aef37b9f2906.js"],"name":"","async":false}
 5:I{"id":4657,"chunks":["185:static/chunks/app/layout-f280aef37b9f2906.js"],"name":"ThemeProvider","async":false}
 6:I{"id":1443,"chunks":["272:static/chunks/webpack-daeda959419e280c.js","971:static/chunks/fd9d1056-4247e967af11df81.js","864:static/chunks/864-c56761dad9a1cfde.js"],"name":"","async":false}
