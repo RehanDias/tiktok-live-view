@@ -513,9 +513,10 @@ export default function Home() {
     };
 
     const getStreamUrl = () => {
-        if (!streamData?.live.streamQualities?.[selectedQuality]?.urls)
-            return null;
-        const urls = streamData.live.streamQualities[selectedQuality].urls;
+        if (!streamData?.live.streamQualities) return null;
+        const qualities = streamData.live.streamQualities;
+        if (!qualities[selectedQuality]?.urls) return null;
+        const urls = qualities[selectedQuality].urls;
         return urls.hls || urls.flv || null;
     };
 
