@@ -360,6 +360,22 @@ export default function Home() {
 
         try {
             const data = await fetchTiktokLiveData(searchUsername);
+
+            // Validate response data structure
+            if (!data || typeof data !== "object") {
+                throw new Error("Invalid API response format");
+            }
+
+            // Validate user object
+            if (!data.user || !data.user.nickname || !data.user.uniqueId) {
+                throw new Error("Invalid user data in response");
+            }
+
+            // Validate live object
+            if (!data.live || typeof data.live.isLive !== "boolean") {
+                throw new Error("Invalid live status data in response");
+            }
+
             setStreamData(data);
             addToRecentSearches(searchUsername);
 
@@ -367,32 +383,49 @@ export default function Home() {
                 clearInterval(refreshIntervalRef.current);
             }
 
-            if (data.live.isLive) {
+            // Only set up refresh interval if stream is live and has viewer count
+            if (data.live.isLive && typeof data.live.viewerCount === "number") {
                 refreshIntervalRef.current = setInterval(async () => {
                     try {
                         const refreshData = await fetchTiktokLiveData(
                             searchUsername
                         );
-                        setStreamData((prev) =>
-                            prev
-                                ? {
-                                      ...prev,
-                                      live: {
-                                          ...prev.live,
-                                          viewerCount:
-                                              refreshData.live.viewerCount,
-                                      },
-                                  }
-                                : refreshData
-                        );
+                        if (
+                            refreshData &&
+                            refreshData.live &&
+                            typeof refreshData.live.viewerCount === "number"
+                        ) {
+                            setStreamData((prev) =>
+                                prev
+                                    ? {
+                                          ...prev,
+                                          live: {
+                                              ...prev.live,
+                                              viewerCount:
+                                                  refreshData.live.viewerCount,
+                                          },
+                                      }
+                                    : refreshData
+                            );
+                        }
                     } catch (err) {
                         console.error("Failed to refresh viewer count:", err);
+                        // Clear interval if we can't refresh data
+                        if (refreshIntervalRef.current) {
+                            clearInterval(refreshIntervalRef.current);
+                        }
                     }
-                }, 5 * 60 * 1000);
+                }, 5 * 60 * 1000); // 5 minutes
             }
         } catch (err) {
             console.error("Fetch error:", err);
-            setError("Failed to fetch stream data");
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "Failed to fetch stream data. Please try again later."
+            );
+            // Clear any existing stream data on error
+            setStreamData(null);
         } finally {
             setLoading(false);
         }
