@@ -32,15 +32,26 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { fetchTiktokLiveData } from "@/lib/api";
 
+interface StreamQuality {
+    flv?: string;
+    hls?: string;
+    lls?: string;
+    resolution: string;
+    bitrate: number;
+    codec: string;
+}
+
 interface TikTokResponse {
     user: {
+        id: string;
         nickname: string;
         uniqueId: string;
-        id: string;
-        followers: number;
-        following: number;
         signature: string;
         verified: boolean;
+        stats: {
+            followers: number;
+            following: number;
+        };
         avatar: {
             large: string;
             medium: string;
@@ -49,46 +60,33 @@ interface TikTokResponse {
     };
     live: {
         isLive: boolean;
-        roomId?: string;
-        status?: number;
-        title?: string;
-        startTime?: number;
-        viewerCount?: number;
-        streamId?: string;
-        coverUrl?: string;
-        squareCoverUrl?: string;
-        streamQualities?: {
-            origin?: {
-                urls: { flv?: string; hls?: string };
-                resolution: string;
-                bitrate: number;
-            };
-            uhd_60?: {
-                urls: { flv?: string; hls?: string };
-                resolution: string;
-                bitrate: number;
-            };
-            hd_60?: {
-                urls: { flv?: string; hls?: string };
-                resolution: string;
-                bitrate: number;
-            };
-            hd?: {
-                urls: { flv?: string; hls?: string };
-                resolution: string;
-                bitrate: number;
-            };
-            sd?: {
-                urls: { flv?: string; hls?: string };
-                resolution: string;
-                bitrate: number;
-            };
-            ld?: {
-                urls: { flv?: string; hls?: string };
-                resolution: string;
-                bitrate: number;
-            };
+        status: number;
+        roomId: string;
+        streamId: string;
+        info: {
+            title: string;
+            startTime: number;
+            coverUrl: string;
         };
+        stats: {
+            currentViewers: number | null;
+            totalViewers: number;
+            enterCount: number;
+            newFollows: number;
+        };
+        stream: {
+            origin?: StreamQuality;
+            uhd_60?: StreamQuality;
+            hd_60?: StreamQuality;
+            hd?: StreamQuality;
+            sd?: StreamQuality;
+            ld?: StreamQuality;
+            ao?: StreamQuality;
+        } | null;
+    };
+    meta: {
+        responseTime: number;
+        cached: boolean;
     };
 }
 
@@ -286,10 +284,10 @@ export default function Home() {
     };
 
     const getOptimalQuality = (
-        qualities: TikTokResponse["live"]["streamQualities"],
+        stream: TikTokResponse["live"]["stream"],
         networkSpeed: number
     ): string => {
-        if (!qualities) return "hd";
+        if (!stream) return "hd";
 
         const qualityLevels: { [key: string]: number } = {
             ld: 1,
@@ -300,7 +298,7 @@ export default function Home() {
             origin: 6,
         };
 
-        const availableQualities = Object.entries(qualities)
+        const availableQualities = Object.entries(stream)
             .filter(([quality]) => quality !== "ao")
             .sort(
                 ([a], [b]) =>
@@ -318,16 +316,13 @@ export default function Home() {
     };
 
     const checkAndUpdateQuality = useCallback(async () => {
-        if (!autoQuality || !streamData?.live.streamQualities) return;
+        if (!autoQuality || !streamData?.live.stream) return;
 
         setLoadingQuality(true);
         const speed = await measureNetworkSpeed();
         networkSpeedRef.current = speed;
 
-        const optimalQuality = getOptimalQuality(
-            streamData.live.streamQualities,
-            speed
-        );
+        const optimalQuality = getOptimalQuality(streamData.live.stream, speed);
         if (optimalQuality && optimalQuality !== selectedQuality) {
             setSelectedQuality(optimalQuality as any);
         }
@@ -337,7 +332,7 @@ export default function Home() {
             checkAndUpdateQuality,
             30000
         );
-    }, [autoQuality, streamData?.live.streamQualities, selectedQuality]);
+    }, [autoQuality, streamData?.live.stream, selectedQuality]);
 
     useEffect(() => {
         if (streamData?.live.isLive) {
@@ -383,8 +378,8 @@ export default function Home() {
                 clearInterval(refreshIntervalRef.current);
             }
 
-            // Only set up refresh interval if stream is live and has viewer count
-            if (data.live.isLive && typeof data.live.viewerCount === "number") {
+            // Only set up refresh interval if stream is live
+            if (data.live.isLive) {
                 refreshIntervalRef.current = setInterval(async () => {
                     try {
                         const refreshData = await fetchTiktokLiveData(
@@ -393,7 +388,7 @@ export default function Home() {
                         if (
                             refreshData &&
                             refreshData.live &&
-                            typeof refreshData.live.viewerCount === "number"
+                            refreshData.live.stats
                         ) {
                             setStreamData((prev) =>
                                 prev
@@ -401,8 +396,7 @@ export default function Home() {
                                           ...prev,
                                           live: {
                                               ...prev.live,
-                                              viewerCount:
-                                                  refreshData.live.viewerCount,
+                                              stats: refreshData.live.stats,
                                           },
                                       }
                                     : refreshData
@@ -440,14 +434,14 @@ export default function Home() {
     };
 
     const getStreamUrl = useCallback(() => {
-        if (!streamData || !streamData.live.streamQualities) return null;
+        if (!streamData?.live.stream) return null;
 
-        const qualities = streamData.live.streamQualities;
-        const quality = qualities[selectedQuality];
+        const stream = streamData.live.stream;
+        const quality = stream[selectedQuality];
 
-        if (!quality?.urls) return null;
+        if (!quality) return null;
 
-        return quality.urls.hls || quality.urls.flv || null;
+        return quality.hls || quality.flv || null;
     }, [streamData, selectedQuality]);
 
     useEffect(() => {
@@ -503,7 +497,7 @@ export default function Home() {
                                 console.error("HLS error:", data);
                                 if (autoQuality) {
                                     const qualities = Object.keys(
-                                        streamData.live.streamQualities || {}
+                                        streamData.live.stream || {}
                                     );
                                     const currentIndex =
                                         qualities.indexOf(selectedQuality);
@@ -555,7 +549,7 @@ export default function Home() {
         };
     }, [
         streamData?.live.isLive,
-        streamData?.live.streamQualities,
+        streamData?.live.stream,
         selectedQuality,
         autoQuality,
         getStreamUrl,
@@ -809,12 +803,12 @@ export default function Home() {
                                             <div className="flex items-center gap-2">
                                                 <Users className="w-5 h-5 text-violet-500 dark:text-violet-400" />
                                                 <span className="text-lg">
-                                                    {streamData.user.followers.toLocaleString()}{" "}
+                                                    {streamData.user.stats.followers.toLocaleString()}{" "}
                                                     followers
                                                 </span>
                                             </div>
                                             <span className="text-muted-foreground text-lg">
-                                                {streamData.user.following.toLocaleString()}{" "}
+                                                {streamData.user.stats.following.toLocaleString()}{" "}
                                                 following
                                             </span>
                                         </div>
@@ -877,24 +871,22 @@ export default function Home() {
                                                     <div className="flex items-center gap-2">
                                                         <Eye className="w-5 h-5 text-violet-500 dark:text-violet-400" />
                                                         <span>
-                                                            {streamData.live.viewerCount?.toLocaleString()}{" "}
+                                                            {streamData.live.stats.currentViewers?.toLocaleString() ||
+                                                                streamData.live.stats.totalViewers.toLocaleString()}{" "}
                                                             watching
                                                         </span>
                                                     </div>
-                                                    {streamData.live
-                                                        .startTime && (
-                                                        <div className="flex items-center gap-2">
-                                                            <Clock className="w-5 h-5 text-violet-500 dark:text-violet-400" />
-                                                            <span>
-                                                                Started at{" "}
-                                                                {formatTime(
-                                                                    streamData
-                                                                        .live
-                                                                        .startTime
-                                                                )}
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="w-5 h-5 text-violet-500 dark:text-violet-400" />
+                                                        <span>
+                                                            Started at{" "}
+                                                            {formatTime(
+                                                                streamData.live
+                                                                    .info
+                                                                    .startTime
+                                                            )}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </>
                                         ) : (
@@ -908,14 +900,14 @@ export default function Home() {
                                     </div>
 
                                     {streamData.live.isLive &&
-                                        streamData.live.title && (
+                                        streamData.live.info.title && (
                                             <p className="text-xl font-medium mb-4 bg-gradient-to-r from-pink-500 to-violet-500 dark:from-violet-400 dark:to-pink-400 bg-clip-text text-transparent">
-                                                {streamData.live.title}
+                                                {streamData.live.info.title}
                                             </p>
                                         )}
 
                                     {streamData.live.isLive &&
-                                        streamData.live.streamQualities && (
+                                        streamData.live.stream && (
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex items-center gap-2">
                                                     <Switch
@@ -937,8 +929,7 @@ export default function Home() {
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {Object.entries(
-                                                        streamData.live
-                                                            .streamQualities
+                                                        streamData.live.stream
                                                     )
                                                         .filter(
                                                             ([quality]) =>
@@ -991,7 +982,7 @@ export default function Home() {
 
                                     {streamData.user.signature && (
                                         <div className="border-t border-border/50 dark:border-gray-700 pt-6">
-                                            <p className="text-muted-foreground text-lg italic">
+                                            <p className="text-muted-foreground text-lg italic whitespace-pre-wrap">
                                                 {streamData.user.signature}
                                             </p>
                                         </div>

@@ -1,8 +1,7 @@
-interface TiktokStreamQuality {
-    urls: {
-        flv?: string;
-        hls?: string;
-    };
+interface StreamQuality {
+    flv?: string;
+    hls?: string;
+    lls?: string;
     resolution: string;
     bitrate: number;
     codec: string;
@@ -10,13 +9,15 @@ interface TiktokStreamQuality {
 
 interface TiktokResponse {
     user: {
+        id: string;
         nickname: string;
         uniqueId: string;
-        id: string;
-        followers: number;
-        following: number;
         signature: string;
         verified: boolean;
+        stats: {
+            followers: number;
+            following: number;
+        };
         avatar: {
             large: string;
             medium: string;
@@ -25,54 +26,67 @@ interface TiktokResponse {
     };
     live: {
         isLive: boolean;
-        roomId?: string;
-        status?: number;
-        title?: string;
-        startTime?: number;
-        viewerCount?: number;
-        streamId?: string;
-        coverUrl?: string;
-        squareCoverUrl?: string;
-        streamQualities?: {
-            origin?: TiktokStreamQuality;
-            uhd_60?: TiktokStreamQuality;
-            hd_60?: TiktokStreamQuality;
-            hd?: TiktokStreamQuality;
-            sd?: TiktokStreamQuality;
-            ld?: TiktokStreamQuality;
-            ao?: TiktokStreamQuality;
+        status: number;
+        roomId: string;
+        streamId: string;
+        info: {
+            title: string;
+            startTime: number;
+            coverUrl: string;
         };
+        stats: {
+            currentViewers: number | null;
+            totalViewers: number;
+            enterCount: number;
+            newFollows: number;
+        };
+        stream: {
+            origin?: StreamQuality;
+            uhd_60?: StreamQuality;
+            hd_60?: StreamQuality;
+            hd?: StreamQuality;
+            sd?: StreamQuality;
+            ld?: StreamQuality;
+            ao?: StreamQuality;
+        } | null;
+    };
+    meta: {
+        responseTime: number;
+        cached: boolean;
     };
 }
 
-interface AllOriginsResponse {
-    contents: string;
-    status: {
-        url: string;
-        content_type: string;
-        http_code: number;
-        response_time: number;
-        content_length: number;
-    }
+interface CorsProxyResponse {
+    success: boolean;
+    error?: string;
+    data?: string;
 }
 
 export async function fetchTiktokLiveData(username: string): Promise<TiktokResponse> {
     try {
         const targetUrl = `https://tiktok-live-stream.vercel.app/api/tiktok-live/${username}`;
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+        const proxyUrl = `https://cors-bypass-red.vercel.app/api?url=${encodeURIComponent(targetUrl)}`;
         
         const response = await fetch(proxyUrl);
         
         if (!response.ok) {
-            throw new Error('Failed to fetch data');
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const data: AllOriginsResponse = await response.json();
+        const data: CorsProxyResponse = await response.json();
         
-        // allorigins returns the response as a string in the contents field
-        return JSON.parse(data.contents);
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to fetch data from proxy');
+        }
+        
+        if (!data.data) {
+            throw new Error('No data returned from proxy');
+        }
+        
+        // Parse the response data
+        return JSON.parse(data.data);
     } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching TikTok live data:', error);
         throw error;
     }
 }
