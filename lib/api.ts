@@ -59,7 +59,9 @@ interface TiktokResponse {
 interface CorsProxyResponse {
     success: boolean;
     error?: string;
-    data?: string;
+    data?: any; // Can be object or string
+    status?: number;
+    contentType?: string;
 }
 
 export async function fetchTiktokLiveData(username: string): Promise<TiktokResponse> {
@@ -73,18 +75,25 @@ export async function fetchTiktokLiveData(username: string): Promise<TiktokRespo
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const data: CorsProxyResponse = await response.json();
+        const proxyData: CorsProxyResponse = await response.json();
         
-        if (!data.success) {
-            throw new Error(data.error || 'Failed to fetch data from proxy');
+        if (!proxyData.success) {
+            throw new Error(proxyData.error || 'Failed to fetch data from proxy');
         }
         
-        if (!data.data) {
+        if (!proxyData.data) {
             throw new Error('No data returned from proxy');
         }
         
-        // Parse the response data
-        return JSON.parse(data.data);
+        // Handle both object and string data
+        let tiktokData: TiktokResponse;
+        if (typeof proxyData.data === 'string') {
+            tiktokData = JSON.parse(proxyData.data);
+        } else {
+            tiktokData = proxyData.data as TiktokResponse;
+        }
+        
+        return tiktokData;
     } catch (error) {
         console.error('Error fetching TikTok live data:', error);
         throw error;
